@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
@@ -40,6 +41,12 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     try:
+            url_match = re.search(r'https?://[^\s]+', update.message.text)
+    if url_match:
+        url = url_match.group(0)
+    else:
+        url = update.message.text
+
         if os.path.exists("video.mp4"):
             os.remove("video.mp4")
 
