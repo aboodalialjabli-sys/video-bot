@@ -9,7 +9,7 @@ import yt_dlp
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # توكن البوت الخاص بك
-TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YgzAul"
+TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YGzAuNzmiiS2A"
 
 # رسالة الترحيب عند الضغط على Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
