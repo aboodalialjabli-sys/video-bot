@@ -2,11 +2,14 @@ import os
 import logging
 import asyncio
 import urllib.request
-import json
 from flask import Flask, request
+import nest_asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 import yt_dlp
+
+# تطبيق حل تعارض حلقة الأحداث نهائياً
+nest_asyncio.apply()
 
 # إعداد السجل
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -18,8 +21,15 @@ RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL')
 
 app = Flask(__name__)
 
-# بناء تطبيق التيليجرام (بدون تشغيل سيرفر داخلي)
-telegram_app = ApplicationBuilder().token(TOKEN).build()
+# بناء تطبيق التيليجرام
+telegram_app = ApplicationBuilder().token(TOKEN).concurrent_updates(True).build()
+
+async def initialize_bot():
+    await telegram_app.initialize()
+
+# تهيئة البوت عند البدء
+loop = asyncio.get_event_loop()
+loop.run_until_complete(initialize_bot())
 
 # رسالة الترحيب
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,21 +83,20 @@ telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), downl
 
 @app.route('/')
 def home():
-    return "Bot is running active via Webhook!"
+    return "Bot is running active via Webhook with nest_asyncio!"
 
-# استقبال الـ Webhook من تيليجرام وتحويله للبوت
+# استقبال الـ Webhook بشكل آمن ودون أي أخطاء في الـ Event Loop
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     try:
         json_data = request.get_json(force=True)
         update = Update.de_json(json_data, telegram_app.bot)
         
-        # تهيئة وتشغيل المعالجة داخل حلقة الأحداث
         async def process():
-            await telegram_app.initialize()
             await telegram_app.process_update(update)
             
-        asyncio.run(process())
+        current_loop = asyncio.get_event_loop()
+        current_loop.run_until_complete(process())
     except Exception as e:
         logging.error(f"Webhook error: {e}")
     return 'OK', 200
@@ -103,7 +112,5 @@ def set_telegram_webhook():
             logging.error(f"Failed to set webhook: {e}")
 
 if __name__ == '__main__':
-    # تسطير الـ Webhook تلقائياً عند الإقلاع
     set_telegram_webhook()
-    # تشغيل سيرفر الويب فقط
     app.run(host='0.0.0.0', port=PORT)
