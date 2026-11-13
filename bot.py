@@ -9,10 +9,10 @@ import yt_dlp
 # إعداد السجل
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# توكن البوت الخاص بك
-TOKEN = "9173536633:AAFUlhZF-YQ12Il79lbNYS1V4-KC1jiAEmo"
+# توكن البوت الجديد الخاص بك
+TOKEN = "9263521777:AAH4SMf96rRxghm8vNRLosueiNZoWtqg1-Y"
 
-# إنشاء سيرفر ويب وهمي لمنع رندر من إيقاف البوت
+# إنشاء سيرفر ويب وهمي لمنع رندر من إيقاف البوت وضمان عمله 24/7
 app_web = Flask('')
 
 @app_web.route('/')
@@ -42,7 +42,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
 
-    # التحقق من أن الرابط يتبع لانستا أو فيس بوك
+    # التحقق من أن الرابط يتبع لانستا أو فيسبوك
     if not ("instagram.com" in url or "facebook.com" in url or "fb.watch" in url or "fb.me" in url):
         await update.message.reply_text("عذراً، هذا البوت مخصص لتحميل فيديوهات إنستغرام وفيسبوك فقط!")
         return
@@ -74,7 +74,7 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text("حدث خطأ أثناء تحميل الفيديو. قد يكون الرابط محمي أو غير مدعوم.")
 
 def main():
-    # تشغيل سيرفر الحفاظ على البوت نشطاً
+    # تشغيل سيرفر الحفاظ على البوت نشطاً على مدار الساعة
     keep_alive()
 
     # إعداد بوت تيليجرام
