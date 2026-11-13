@@ -10,7 +10,7 @@ import yt_dlp
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # توكن البوت الخاص بك
-TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YgzAul"
+TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YGzAuNzmiiS2A"
 
 # إنشاء سيرفر ويب وهمي لمنع رندر من إيقاف البوت
 app_web = Flask('')
