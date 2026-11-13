@@ -1,6 +1,9 @@
 import os
 import logging
-from flask import Flask
+import asyncio
+import urllib.request
+import json
+from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 import yt_dlp
@@ -11,13 +14,12 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # توكن البوت الخاص بك
 TOKEN = "9263521777:AAH4SMf96rRxghm8vNRLosueiNZoWtqg1-Y"
 PORT = int(os.environ.get('PORT', 8080))
-RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL') # رابط مشروعك على رندر تلقائياً
+RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL')
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "Bot is running active via Webhook!"
+# بناء تطبيق التيليجرام (بدون تشغيل سيرفر داخلي)
+telegram_app = ApplicationBuilder().token(TOKEN).build()
 
 # رسالة الترحيب
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -65,20 +67,43 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error: {e}")
         await msg.edit_text("حدث خطأ أثناء تحميل الفيديو. قد يكون الرابط محمي أو غير مدعوم.")
 
-def main():
-    # بناء تطبيق تيليجرام
-    telegram_app = ApplicationBuilder().token(TOKEN).build()
+# ربط الأوامر والرسائل
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), download_video))
 
-    telegram_app.add_handler(CommandHandler("start", start))
-    telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), download_video))
+@app.route('/')
+def home():
+    return "Bot is running active via Webhook!"
 
-    # تشغيل الـ Webhook مباشرة بالطريقة المدمجة والآمنة
-    telegram_app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        secret_token="my_secret_token_123",
-        webhook_url=f"{RENDER_EXTERNAL_URL}/{TOKEN}" if RENDER_EXTERNAL_URL else None,
-    )
+# استقبال الـ Webhook من تيليجرام وتحويله للبوت
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
+    try:
+        json_data = request.get_json(force=True)
+        update = Update.de_json(json_data, telegram_app.bot)
+        
+        # تهيئة وتشغيل المعالجة داخل حلقة الأحداث
+        async def process():
+            await telegram_app.initialize()
+            await telegram_app.process_update(update)
+            
+        asyncio.run(process())
+    except Exception as e:
+        logging.error(f"Webhook error: {e}")
+    return 'OK', 200
+
+def set_telegram_webhook():
+    if RENDER_EXTERNAL_URL:
+        webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
+        api_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={webhook_url}"
+        try:
+            urllib.request.urlopen(api_url)
+            logging.info(f"Webhook successfully registered to: {webhook_url}")
+        except Exception as e:
+            logging.error(f"Failed to set webhook: {e}")
 
 if __name__ == '__main__':
-    main()
+    # تسطير الـ Webhook تلقائياً عند الإقلاع
+    set_telegram_webhook()
+    # تشغيل سيرفر الويب فقط
+    app.run(host='0.0.0.0', port=PORT)
