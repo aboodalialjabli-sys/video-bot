@@ -1,6 +1,7 @@
 import os
 import logging
-import re
+import threading
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 import yt_dlp
@@ -9,31 +10,42 @@ import yt_dlp
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # توكن البوت الخاص بك
-TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YGzAuNzmiiS2A"
+TOKEN = "8919952774:AAH_VmviFJ-vvQjDy_V4r6YgzAul"
+
+# إنشاء سيرفر ويب وهمي لمنع رندر من إيقاف البوت
+app_web = Flask('')
+
+@app_web.route('/')
+def home():
+    return "Bot is active and running 24/7!"
+
+def run_web():
+    app_web.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+
+def keep_alive():
+    t = threading.Thread(target=run_web)
+    t.start()
 
 # رسالة الترحيب عند الضغط على Start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
     welcome_text = (
         f"أهلاً بك يا {user_name} !\n"
-        "مرحباً بك في بوت تحميل الفيديوهات بسهولة وبدون علامة مائية من:\n"
-        "• تيك توك (TikTok)\n"
+        "مرحباً بك في بوت تحميل الفيديوهات من:\n"
         "• إنستغرام (Instagram)\n"
         "• فيسبوك (Facebook)\n\n"
-        "أرسل رابط الفيديو الذي تريد تحميله 👇"
+        "أرسل رابط الفيديو من إنستا أو الفيس وسأقوم بتحميله فوراً 👇"
     )
     await update.message.reply_text(welcome_text)
 
-# وظيفة تحميل الفيديو واستخراج الرابط النظيف تلقائياً
+# وظيفة تحميل الفيديو لروابط انستا وفيس
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = update.message.text
-    
-    # استخراج الرابط النظيف تلقائياً متجاهلاً أي كلام أو إعلانات زائدة
-    url_match = re.search(r'https?://[^\s]+', message_text)
-    if url_match:
-        url = url_match.group(0)
-    else:
-        url = message_text
+    url = update.message.text.strip()
+
+    # التحقق من أن الرابط يتبع لانستا أو فيس بوك
+    if not ("instagram.com" in url or "facebook.com" in url or "fb.watch" in url or "fb.me" in url):
+        await update.message.reply_text("عذراً، هذا البوت مخصص لتحميل فيديوهات إنستغرام وفيسبوك فقط!")
+        return
 
     msg = await update.message.reply_text("جاري تحميل الفيديو، لطفاً انتظر قليلاً...")
 
@@ -55,13 +67,17 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.message_id)
             os.remove("video.mp4")
         else:
-            await msg.edit_text("حدث خطأ أثناء التحميل. التأكد من أن الرابط عام وصحيح.")
+            await msg.edit_text("حدث خطأ أثناء التحميل. تأكد من أن الرابط عام وصحيح.")
 
     except Exception as e:
         logging.error(f"Error: {e}")
         await msg.edit_text("حدث خطأ أثناء تحميل الفيديو. قد يكون الرابط محمي أو غير مدعوم.")
 
 def main():
+    # تشغيل سيرفر الحفاظ على البوت نشطاً
+    keep_alive()
+
+    # إعداد بوت تيليجرام
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
