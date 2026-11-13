@@ -1,7 +1,6 @@
 import os
 import logging
-import asyncio
-from flask import Flask, request
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 import yt_dlp
@@ -12,14 +11,15 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # توكن البوت الخاص بك
 TOKEN = "9263521777:AAH4SMf96rRxghm8vNRLosueiNZoWtqg1-Y"
 PORT = int(os.environ.get('PORT', 8080))
-RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL')
+RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL') # رابط مشروعك على رندر تلقائياً
 
 app = Flask(__name__)
 
-# بناء تطبيق التيليجرام
-telegram_app = ApplicationBuilder().token(TOKEN).build()
+@app.route('/')
+def home():
+    return "Bot is running active via Webhook!"
 
-# رسالة الترحيب عند الضغط على Start
+# رسالة الترحيب
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
     welcome_text = (
@@ -31,7 +31,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text)
 
-# وظيفة تحميل الفيديو لروابط انستا وفيس
+# وظيفة تحميل الفيديو
 async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
 
@@ -65,31 +65,20 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error: {e}")
         await msg.edit_text("حدث خطأ أثناء تحميل الفيديو. قد يكون الرابط محمي أو غير مدعوم.")
 
-# ربط الأوامر والرسائل
-telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), download_video))
+def main():
+    # بناء تطبيق تيليجرام
+    telegram_app = ApplicationBuilder().token(TOKEN).build()
 
-@app.route('/')
-def home():
-    return "Bot is running active via Webhook!"
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), download_video))
 
-@app.route(f'/{TOKEN}', methods=['POST'])
-def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = Update.de_json(json_str, telegram_app.bot)
-    asyncio.run(telegram_app.process_update(update))
-    return 'OK', 200
-
-async def setup_webhook():
-    if RENDER_EXTERNAL_URL:
-        webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
-        await telegram_app.bot.set_webhook(url=webhook_url)
-        logging.info(f"Webhook successfully set to: {webhook_url}")
+    # تشغيل الـ Webhook مباشرة بالطريقة المدمجة والآمنة
+    telegram_app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        secret_token="my_secret_token_123",
+        webhook_url=f"{RENDER_EXTERNAL_URL}/{TOKEN}" if RENDER_EXTERNAL_URL else None,
+    )
 
 if __name__ == '__main__':
-    # تهيئة البوت وتثبيت الـ Webhook تلقائياً
-    asyncio.run(telegram_app.initialize())
-    asyncio.run(setup_webhook())
-    
-    # تشغيل سيرفر Flask
-    app.run(host='0.0.0.0', port=PORT)
+    main()
