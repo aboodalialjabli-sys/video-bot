@@ -474,17 +474,23 @@ def download_video(chat_id, url, message_id, download_id):
 
     try:
         output = str(Path(folder) / "%(id)s.%(ext)s")
+       
+options = {
+    "format": "best[ext=mp4]/best",
+    "user_agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/140.0.0.0 Safari/537.36"
+    ),
+    "outtmpl": output,
+    "max_filesize": MAX_SIZE,
+    "noplaylist": True,
+    "quiet": True,
+    "no_warnings": True,
+    "retries": 2,
+    "socket_timeout": 30
+}
 
-        options = {
-            "format": "best[ext=mp4]/best",
-            "outtmpl": output,
-            "max_filesize": MAX_SIZE,
-            "noplaylist": True,
-            "quiet": True,
-            "no_warnings": True,
-            "retries": 2,
-            "socket_timeout": 30
-        }
 
         with yt_dlp.YoutubeDL(options) as ydl:
             ydl.download([url])
