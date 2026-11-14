@@ -3,3 +3,4 @@ Flask>=3.0,<4
 gunicorn>=22,<24
 requests>=2.31,<3
 yt-dlp>=2025.1.15
+psycopg[binary]>=3.2,<4
